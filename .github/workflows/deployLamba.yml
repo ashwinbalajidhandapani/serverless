@@ -1,0 +1,39 @@
+name: s3 Artifact - codedeploy
+on:
+  push:
+    branches: [main]
+
+jobs:
+  publish-s3-artifact-and-deploy:
+    runs-on: ubuntu-latest
+    name: on-push
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      # install aws cli
+      - name: Install AWS Cli
+        run: sudo pip install awscli
+
+      # set aws credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: ls
+        run: ls -lart
+
+      - name: create a zip
+        run: zip -r csye6225-lambda-${{ github.sha }}.zip index.js
+
+      - name: move artifacts to s3
+        run: |
+          aws s3 cp ./csye6225-lambda-${{ github.sha}}.zip s3://${{ secrets.S3_BUCKETNAME }}/
+
+      - name: Update Function Code
+        run: |
+          aws lambda update-function-code --function-name emailVerification --s3-bucket ${{ secrets.S3_BUCKETNAME  }} --s3-key csye6225-lambda-${{ github.sha }}.zip
